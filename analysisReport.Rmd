@@ -52,7 +52,7 @@ qqline(log(df$taskTimeCom))
 ggplot(forPlotting, aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) +
   geom_line() +
   geom_point() +
-  # geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci)) +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci)) +
   theme_bw()
 
 ```
