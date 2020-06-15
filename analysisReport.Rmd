@@ -40,8 +40,8 @@ forPlotting <- df %>%
     count = n()
   ) %>%
   mutate(
-    se = logssd / sqrt(count),
-    logse = ssd / sqrt(count),
+    se = ssd / sqrt(count),
+    logse = logssd / sqrt(count),
     lower_ci = lower_ci(smean, se, count),
     upper_ci = upper_ci(smean, se, count),
     loglower_ci = lower_ci(logsmean, logse, count),
@@ -126,15 +126,15 @@ ggplot(aes(x = factor(sigPlace), y = smean, group = androidOwner, colour = andro
 
 #logistic regression on success
 summary(glm(effective~gesture*sigPlace,data=dfDetails,family=binomial))
-print("no differences on completion so what takes least different gestures guesses to success?")
+cat("no differences on completion so what takes least different gestures guesses to success?")
 
 qqnorm(dfDetails$numOfGesturesTriedB4)
 qqline(dfDetails$numOfGesturesTriedB4)
-print("not the best way ;-) - Anyway here's the anova")
+cat("## not the best way ;-) - Anyway here's the anova")
 
 summary(aov(numOfGesturesTriedB4 ~ sigPlace * gesture, dfDetails))
 
-print("and here's a better way to predict number of tried gestures")
+cat("## and here's a better way to predict number of tried gestures")
 summary(glm(numOfGesturesTriedB4~ sigPlace * gesture,data=dfDetails,family="poisson"))
 
 dfDetails %>%
