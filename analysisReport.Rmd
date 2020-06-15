@@ -10,20 +10,83 @@ library(tidyverse)
 source("functions.R")
 
 df <- read.csv("data/Test2of2.csv")
-dfDetails <- df %>%
-  separate_rows(GestureTriedB4, convert = TRUE) %>%
-  drop_na()
+dfDetails <- df 
+# %>%
+  # separate_rows(GestureTriedB4, convert = TRUE) %>%
+  # drop_na()
 
-dfDetails <- df %>%
-  mutate(col2 = strsplit(as.character(GestureTriedB4), ",")) %>%
-  unnest(col2)
-dfDetails$col2 <- as.factor(camel(trimws(dfDetails$col2)))
+dfDetails$numOfGesturesTriedB4 <-str_count(dfDetails$GestureTriedB4,pattern=","  )
+
+dfDetails$effective<-ifelse(is.na(dfDetails$GesTimeCom),0,1) 
+dfAndroid<-df%>% select(1:2)%>% group_by(participantID,androidOwner)%>%distinct()
+
+
+# dfDetails <- df %>%
+#   mutate(col2 = strsplit(as.character(GestureTriedB4), ",")) %>%
+#   unnest(col2)
+# dfDetails$col2 <- as.factor(camel(trimws(dfDetails$col2)))
 dfDetails <- dfDetails %>%
   group_by(participantID, taskOrder) %>%
   mutate(numOfGestures = 1:n())
 
+
 forPlotting <- df %>%
   group_by(sigPlace, gesture) %>%
+  summarise(
+    smean = mean(taskTimeCom, na.rm = TRUE),
+    logsmean = mean(log(taskTimeCom), na.rm = TRUE),
+    ssd = sd(taskTimeCom, na.rm = TRUE),
+    logssd = sd(log(taskTimeCom), na.rm = TRUE),
+    count = n()
+  ) %>%
+  mutate(
+    se = logssd / sqrt(count),
+    logse = ssd / sqrt(count),
+    lower_ci = lower_ci(smean, se, count),
+    upper_ci = upper_ci(smean, se, count),
+    loglower_ci = lower_ci(logsmean, logse, count),
+    logupper_ci = upper_ci(logsmean, logse, count)
+  )
+```
+
+## R Markdown
+
+
+```{r completionTime,echo=FALSE}
+
+qqnorm(df$taskTimeCom)
+qqline(df$taskTimeCom)
+qqnorm(log(df$taskTimeCom))
+qqline(log(df$taskTimeCom))
+
+#what the students had
+summary(aov(log(taskTimeCom) ~ condition, df))
+
+#need to find out problem with androidOwner column
+summary(aov(log(taskTimeCom) ~ sigPlace * gesture, df))
+
+summary(aov(log(taskTimeCom) ~ sigPlace * gesture*androidOwner, df))
+summary(aov(log(taskTimeCom) ~ sigPlace * gesture, df[df$androidOwner=="yes",]))
+summary(aov(log(taskTimeCom) ~ sigPlace * gesture, df[df$androidOwner=="no",]))
+
+ggplot(dfDetails,aes(sample=taskTimeCom))+stat_qq()+stat_qq_line()
+ggplot(dfDetails,aes(sample=log(taskTimeCom)))+stat_qq()+stat_qq_line()
+
+
+ggplot(forPlotting, aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) +
+  geom_line(position=position_dodge(width=0.2)) +
+  geom_point(position=position_dodge(width=0.2)) +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci),width=0.1,position=position_dodge(width=0.2)) + ylab('mean task completion time')+
+  theme_bw()
+
+ggplot(forPlotting, aes(x = factor(sigPlace), y = logsmean, group = gesture, colour = gesture)) +
+  geom_line(position=position_dodge(width=0.2)) +
+  geom_point(position=position_dodge(width=0.2)) +
+  geom_errorbar(aes(ymin = loglower_ci, ymax = logupper_ci),width=0.1,position=position_dodge(width=0.2)) + ylab('mean task completion time log transformed')+
+  theme_bw()
+
+df %>%
+  group_by(sigPlace, gesture,androidOwner) %>%
   summarise(
     smean = mean(taskTimeCom, na.rm = TRUE),
     ssd = sd(taskTimeCom, na.rm = TRUE),
@@ -33,36 +96,68 @@ forPlotting <- df %>%
     se = ssd / sqrt(count),
     lower_ci = lower_ci(smean, se, count),
     upper_ci = upper_ci(smean, se, count)
-  )
+  ) %>%
+  ggplot(aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) +
+  geom_line(position=position_dodge(width=0.2)) +
+  geom_point(position=position_dodge(width=0.2)) +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci),width=.1,position=position_dodge(width=0.2)) + ylab('mean task completion time')+
+  theme_bw()+facet_grid(cols = vars(androidOwner))
+
+df %>%
+  group_by(sigPlace, gesture,androidOwner) %>%
+  summarise(
+    smean = mean(taskTimeCom, na.rm = TRUE),
+    ssd = sd(taskTimeCom, na.rm = TRUE),
+    count = n()
+  ) %>%
+  mutate(
+    se = ssd / sqrt(count),
+    lower_ci = lower_ci(smean, se, count),
+    upper_ci = upper_ci(smean, se, count)
+  ) %>%
+ggplot(aes(x = factor(sigPlace), y = smean, group = androidOwner, colour = androidOwner)) +
+  geom_line(position=position_dodge(width=0.2)) +
+  geom_point(position=position_dodge(width=0.2)) +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci),width=.1,position=position_dodge(width=0.2)) +
+  theme_bw()+facet_grid(cols = vars(gesture))
+```
+## other gestures tried
+```{r GesturesTried,echo=FALSE}
+
+#logistic regression on success
+summary(glm(effective~gesture*sigPlace,data=dfDetails,family=binomial))
+print("no differences on completion so what takes least different gestures guesses to success?")
+
+qqnorm(dfDetails$numOfGesturesTriedB4)
+qqline(dfDetails$numOfGesturesTriedB4)
+print("not the best way ;-) - Anyway here's the anova")
+
+summary(aov(numOfGesturesTriedB4 ~ sigPlace * gesture, dfDetails))
+
+print("and here's a better way to predict number of tried gestures")
+summary(glm(numOfGesturesTriedB4~ sigPlace * gesture,data=dfDetails,family="poisson"))
+
+dfDetails %>%
+  group_by(sigPlace, gesture) %>%
+  summarise(
+    smean = mean(numOfGesturesTriedB4+1, na.rm = TRUE),
+    ssd = sd(numOfGesturesTriedB4+1, na.rm = TRUE),
+    count = n()
+  ) %>%
+  mutate(
+    se = ssd / sqrt(count),
+    lower_ci = lower_ci(smean, se, count),
+    upper_ci = upper_ci(smean, se, count)
+  ) %>%
+ggplot(aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) +
+  geom_line(position=position_dodge(width=0.2)) +
+  geom_point(position=position_dodge(width=0.2)) +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci),width=.1,position=position_dodge(width=0.2)) + ylab('number of gestures before success')+  theme_bw() 
+  # +facet_grid(cols = vars(gesture))
+
+
+
+
+
 
 ```
-
-## R Markdown
-
-
-```{r cars,echo=FALSE}
-
-
-summary(aov(log(taskTimeCom) ~ sigPlace * gesture, df))
-qqnorm(log(df$taskTimeCom))
-qqline(log(df$taskTimeCom))
-
-
-
-ggplot(forPlotting, aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) +
-  geom_line() +
-  geom_point() +
-  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci)) +
-  theme_bw()
-
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
