@@ -52,7 +52,7 @@ forPlotting <- df %>%
 ## R Markdown
 
 
-```{r completionTime,echo=FALSE}
+```{r completionTime1,echo=FALSE}
 
 qqnorm(df$taskTimeCom)
 qqline(df$taskTimeCom)
@@ -72,19 +72,22 @@ summary(aov(log(taskTimeCom) ~ sigPlace * gesture, df[df$androidOwner=="no",]))
 ggplot(dfDetails,aes(sample=taskTimeCom))+stat_qq()+stat_qq_line()
 ggplot(dfDetails,aes(sample=log(taskTimeCom)))+stat_qq()+stat_qq_line()
 
-
+```
+```{r completionTime2,echo=FALSE}
 ggplot(forPlotting, aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) +
   geom_line(position=position_dodge(width=0.2)) +
   geom_point(position=position_dodge(width=0.2)) +
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci),width=0.1,position=position_dodge(width=0.2)) + ylab('mean task completion time')+
   theme_bw()
-
+```
+```{r completionTime3,echo=FALSE}
 ggplot(forPlotting, aes(x = factor(sigPlace), y = logsmean, group = gesture, colour = gesture)) +
   geom_line(position=position_dodge(width=0.2)) +
   geom_point(position=position_dodge(width=0.2)) +
   geom_errorbar(aes(ymin = loglower_ci, ymax = logupper_ci),width=0.1,position=position_dodge(width=0.2)) + ylab('mean task completion time log transformed')+
   theme_bw()
-
+```
+```{r completionTime3,echo=FALSE}
 df %>%
   group_by(sigPlace, gesture,androidOwner) %>%
   summarise(
@@ -97,12 +100,14 @@ df %>%
     lower_ci = lower_ci(smean, se, count),
     upper_ci = upper_ci(smean, se, count)
   ) %>%
+
   ggplot(aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) +
   geom_line(position=position_dodge(width=0.2)) +
   geom_point(position=position_dodge(width=0.2)) +
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci),width=.1,position=position_dodge(width=0.2)) + ylab('mean task completion time')+
   theme_bw()+facet_grid(cols = vars(androidOwner))
-
+```
+```{r completionTime4,echo=FALSE}
 df %>%
   group_by(sigPlace, gesture,androidOwner) %>%
   summarise(
@@ -132,12 +137,13 @@ qqnorm(dfDetails$numOfGesturesTriedB4)
 qqline(dfDetails$numOfGesturesTriedB4)
 cat("## not the best way ;-) - Anyway here's the anova")
 
-summary(aov(numOfGesturesTriedB4 ~ sigPlace * gesture, dfDetails))
+summary(aov(numOfGesturesTriedB4 ~ sigPlace * gesture, dfDetails[dfDetails$androidOwner=='yes',]))
 
 cat("## and here's a better way to predict number of tried gestures")
-summary(glm(numOfGesturesTriedB4~ sigPlace * gesture,data=dfDetails,family="poisson"))
+summary(glm(numOfGesturesTriedB4~ sigPlace * gesture,data=dfDetails[dfDetails$androidOwner=='yes',],family="poisson"))
 
 dfDetails %>%
+  filter(androidOwner=='yes') %>%
   group_by(sigPlace, gesture) %>%
   summarise(
     smean = mean(numOfGesturesTriedB4+1, na.rm = TRUE),
@@ -154,10 +160,4 @@ ggplot(aes(x = factor(sigPlace), y = smean, group = gesture, colour = gesture)) 
   geom_point(position=position_dodge(width=0.2)) +
   geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci),width=.1,position=position_dodge(width=0.2)) + ylab('number of gestures before success')+  theme_bw() 
   # +facet_grid(cols = vars(gesture))
-
-
-
-
-
-
 ```
